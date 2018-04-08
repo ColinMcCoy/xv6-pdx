@@ -77,6 +77,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  
+#ifdef CS333_P1
+  p->start_ticks = ticks;
+#endif
 
   return p;
 }
@@ -507,6 +511,10 @@ procdump(void)
   char *state;
   uint pc[10];
 
+#ifdef CS333_P1
+    cprintf("\tPID\tState\tName\tElapsed  PCs\n");
+#endif
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -514,7 +522,11 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("\t%d\t%s\t%s\t", p->pid, state, p->name);
+#ifdef CS333_P1
+    int elapsed_ticks = ticks - p->start_ticks;
+    cprintf("%d.%d\t", elapsed_ticks/1000, elapsed_ticks%1000);
+#endif
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
