@@ -512,7 +512,7 @@ procdump(void)
   uint pc[10];
 
 #ifdef CS333_P1
-    cprintf("\tPID\tState\tName\tElapsed  PCs\n");
+    cprintf("PID\tState\tName\tElapsed  PCs\n");
 #endif
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -522,7 +522,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("\t%d\t%s\t%s\t", p->pid, state, p->name);
+    cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
 #ifdef CS333_P1
     int elapsed_ticks = ticks - p->start_ticks;
     cprintf("%d.%d\t", elapsed_ticks/1000, elapsed_ticks%1000);
