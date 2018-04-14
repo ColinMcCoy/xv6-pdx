@@ -107,7 +107,10 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-
+#ifdef CS333_P2 
+  p->uid = UID_DEFAULT;
+  p->gid = GID_DEFAULT;
+#endif
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
@@ -157,6 +160,11 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+#ifdef CS333_P1
+  //copy uid and gid from parent
+  np->uid = proc->uid;
+  np->gid = proc->gid;
+#endif
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;

@@ -69,6 +69,10 @@ struct proc {
 #ifdef CS333_P1
   uint start_ticks;             // Global tick value at creation
 #endif
+#ifdef CS333_P2
+  uint uid;
+  uint gid;
+#endif
 };
 
 // Process memory is laid out contiguously, low addresses first:
