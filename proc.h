@@ -15,6 +15,9 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
 };
+#ifdef CS333_P2
+struct uproc;
+#endif
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
@@ -72,9 +75,14 @@ struct proc {
 #ifdef CS333_P2
   uint uid;
   uint gid;
+  uint cpu_ticks_total;         // Total elapsed ticks in CPU
+  uint cpu_ticks_in;            // Global tick value when scheduled
 #endif
 };
 
+#ifdef CS333_P2
+int getuprocs(uint max, struct uproc* table);
+#endif
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

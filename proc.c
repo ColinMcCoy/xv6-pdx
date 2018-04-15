@@ -6,6 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
 
 struct {
   struct spinlock lock;
@@ -80,6 +83,11 @@ found:
   
 #ifdef CS333_P1
   p->start_ticks = ticks;
+#endif
+
+#ifdef CS333_P2
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
 #endif
 
   return p;
@@ -325,6 +333,9 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+#ifdef CS333_P2
+      p->cpu_ticks_in = ticks;
+#endif
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -367,6 +378,9 @@ sched(void)
   intena = cpu->intena;
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
+#ifdef CS333_P2
+  proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
+#endif
 }
 
 // Give up the CPU for one scheduling round.
@@ -506,6 +520,28 @@ static char *states[] = {
   [RUNNING]   "run   ",
   [ZOMBIE]    "zombie"
 };
+
+#ifdef CS333_P2
+int
+getuprocs(uint max, struct uproc* table)
+{
+  acquire(&ptable.lock);
+  int i = 0;
+  for(; i < max && i < NPROC; i++){
+    table[i].pid = ptable.proc[i].pid;
+    table[i].uid = ptable.proc[i].uid;
+    table[i].gid = ptable.proc[i].gid;
+    table[i].ppid = ptable.proc[i].parent->pid;
+    table[i].elapsed_ticks = ticks - ptable.proc[i].start_ticks;
+    table[i].CPU_total_ticks = ptable.proc[i].cpu_ticks_total;
+    strncpy(table[i].state, states[ptable.proc[i].state], STRMAX);
+    table[i].size = ptable.proc[i].sz;
+    strncpy(table[i].name, ptable.proc[i].name, STRMAX);
+  }
+  release(&ptable.lock);
+  return i;
+}
+#endif
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.

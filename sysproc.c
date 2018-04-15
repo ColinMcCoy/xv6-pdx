@@ -6,6 +6,9 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
 
 int
 sys_fork(void)
@@ -151,4 +154,19 @@ sys_setgid(void)
   return 0;
 }
 
+// fills table with uproc representations of running processes
+int
+sys_getprocs(void)
+{
+  int max;
+  argint(0, &max);
+  if(max < 0)
+    return -1;
+  struct uproc* table;
+  if(argptr(1, (void*)&table, sizeof(struct uproc)) < 0)
+    return -1;
+  return getuprocs(max, table);
+
+   // = (uproc*) malloc(max * sizeof(uproc))
+}
 #endif
