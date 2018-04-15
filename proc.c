@@ -527,16 +527,23 @@ getuprocs(uint max, struct uproc* table)
 {
   acquire(&ptable.lock);
   int i = 0;
-  for(; i < max && i < NPROC; i++){
-    table[i].pid = ptable.proc[i].pid;
-    table[i].uid = ptable.proc[i].uid;
-    table[i].gid = ptable.proc[i].gid;
-    table[i].ppid = ptable.proc[i].parent->pid;
-    table[i].elapsed_ticks = ticks - ptable.proc[i].start_ticks;
-    table[i].CPU_total_ticks = ptable.proc[i].cpu_ticks_total;
-    strncpy(table[i].state, states[ptable.proc[i].state], STRMAX);
-    table[i].size = ptable.proc[i].sz;
-    strncpy(table[i].name, ptable.proc[i].name, STRMAX);
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC] && i < max; p++){
+    if(p->state == UNUSED || p->state == EMBRYO)
+      continue;
+    table[i].pid = p->pid;
+    table[i].uid = p->uid;
+    table[i].gid = p->gid;
+    if(table[i].pid == 1) // proc is init
+      table[i].ppid = table[i].pid;
+    else
+      table[i].ppid = p->parent->pid;
+    table[i].elapsed_ticks = ticks - p->start_ticks;
+    table[i].CPU_total_ticks = p->cpu_ticks_total;
+    strncpy(table[i].state, states[p->state], STRMAX);
+    table[i].size = p->sz;
+    strncpy(table[i].name, p->name, STRMAX);
+    ++i; 
   }
   release(&ptable.lock);
   return i;
