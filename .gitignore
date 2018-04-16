@@ -1,6 +1,7 @@
 dist
 dist-test
 xv6-pdx.tar.gz
+p2testsuite.c
 
 
 # Created by https://www.gitignore.io/api/c
