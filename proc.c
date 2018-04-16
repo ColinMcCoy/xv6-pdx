@@ -168,7 +168,7 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
-#ifdef CS333_P1
+#ifdef CS333_P2
   //copy uid and gid from parent
   np->uid = proc->uid;
   np->gid = proc->gid;
@@ -343,6 +343,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       proc = 0;
     }
+    
     release(&ptable.lock);
     // if idle, wait for next interrupt
     if (idle) {
@@ -376,11 +377,11 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
-  swtch(&proc->context, cpu->scheduler);
-  cpu->intena = intena;
 #ifdef CS333_P2
   proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
 #endif
+  swtch(&proc->context, cpu->scheduler);
+  cpu->intena = intena;
 }
 
 // Give up the CPU for one scheduling round.
@@ -562,7 +563,9 @@ procdump(void)
   char *state;
   uint pc[10];
 
-#ifdef CS333_P1
+#ifdef CS333_P2
+  cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n");
+#elif defined CS333_P1
     cprintf("PID\tState\tName\tElapsed  PCs\n");
 #endif
 
@@ -573,7 +576,20 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
+#ifdef CS333_P2
+    int ppid;
+    int elapsed = ticks - p->start_ticks;
+    if(p->pid == 1)
+      ppid = p->pid;
+    else
+      ppid = p->parent->pid;
+    cprintf("%d\t%s\t%d\t%d\t%d\t%d.%d\t%d.%d\t%s\t%d\t",
+        p->pid, p->name, p->uid, p->gid, ppid, elapsed/1000,
+        elapsed%1000, p->cpu_ticks_total/1000,
+        p->cpu_ticks_total%1000, state, p->sz);
+#else
     cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
+#endif
 #ifdef CS333_P1
     int elapsed_ticks = ticks - p->start_ticks;
     cprintf("%d.%d\t", elapsed_ticks/1000, elapsed_ticks%1000);

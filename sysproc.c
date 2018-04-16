@@ -168,7 +168,5 @@ sys_getprocs(void)
   if(argptr(1, (void*)&table, sizeof(struct uproc)) < 0)
     return -1;
   return getuprocs(max, table);
-
-   // = (uproc*) malloc(max * sizeof(uproc))
 }
 #endif
