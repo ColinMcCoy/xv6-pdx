@@ -566,7 +566,7 @@ procdump(void)
 #ifdef CS333_P2
   cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n");
 #elif defined CS333_P1
-    cprintf("PID\tState\tName\tElapsed  PCs\n");
+    cprintf("PID\tState\tName\tElapsed\tPCs\n");
 #endif
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -583,16 +583,20 @@ procdump(void)
       ppid = p->pid;
     else
       ppid = p->parent->pid;
-    cprintf("%d\t%s\t%d\t%d\t%d\t%d.%d\t%d.%d\t%s\t%d\t",
+    cprintf("%d\t%s\t%d\t%d\t%d\t%d.%d%d%d\t%d.%d%d%d\t%s\t%d\t",
         p->pid, p->name, p->uid, p->gid, ppid, elapsed/1000,
-        elapsed%1000, p->cpu_ticks_total/1000,
-        p->cpu_ticks_total%1000, state, p->sz);
+        (elapsed%1000 - elapsed%100)/100, (elapsed%100 - elapsed%10)/10,
+        elapsed%10, p->cpu_ticks_total/1000,
+        (p->cpu_ticks_total%1000 - p->cpu_ticks_total%100)/100, 
+        (p->cpu_ticks_total%100 - p->cpu_ticks_total%10)/10,
+        p->cpu_ticks_total%10, state, p->sz);
 #else
     cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
-#endif
 #ifdef CS333_P1
     int elapsed_ticks = ticks - p->start_ticks;
-    cprintf("%d.%d\t", elapsed_ticks/1000, elapsed_ticks%1000);
+    cprintf("%d.%d%d%d\t", elapsed_ticks/1000, (elapsed%1000 - elapsed%100)/100, 
+        (elapsed%100 - elapsed%10)/10, elapsed%10);
+#endif
 #endif
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
