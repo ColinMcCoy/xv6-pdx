@@ -594,8 +594,8 @@ procdump(void)
     cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
 #ifdef CS333_P1
     int elapsed_ticks = ticks - p->start_ticks;
-    cprintf("%d.%d%d%d\t", elapsed_ticks/1000, (elapsed%1000 - elapsed%100)/100, 
-        (elapsed%100 - elapsed%10)/10, elapsed%10);
+    cprintf("%d.%d%d%d\t", elapsed_ticks/1000, (elapsed_ticks%1000 - elapsed_ticks%100)/100, 
+        (elapsed_ticks%100 - elapsed_ticks%10)/10, elapsed_ticks%10);
 #endif
 #endif
     if(p->state == SLEEPING){
