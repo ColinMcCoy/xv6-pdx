@@ -6,6 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
 
 struct {
   struct spinlock lock;
@@ -82,6 +85,11 @@ found:
   p->start_ticks = ticks;
 #endif
 
+#ifdef CS333_P2
+  p->cpu_ticks_total = 0;
+  p->cpu_ticks_in = 0;
+#endif
+
   return p;
 }
 
@@ -107,7 +115,10 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-
+#ifdef CS333_P2 
+  p->uid = UID_DEFAULT;
+  p->gid = GID_DEFAULT;
+#endif
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
@@ -157,6 +168,11 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+#ifdef CS333_P2
+  //copy uid and gid from parent
+  np->uid = proc->uid;
+  np->gid = proc->gid;
+#endif
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -317,6 +333,9 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+#ifdef CS333_P2
+      p->cpu_ticks_in = ticks;
+#endif
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -324,6 +343,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       proc = 0;
     }
+    
     release(&ptable.lock);
     // if idle, wait for next interrupt
     if (idle) {
@@ -357,6 +377,9 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+#ifdef CS333_P2
+  proc->cpu_ticks_total += ticks - proc->cpu_ticks_in;
+#endif
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
@@ -499,6 +522,35 @@ static char *states[] = {
   [ZOMBIE]    "zombie"
 };
 
+#ifdef CS333_P2
+int
+getuprocs(uint max, struct uproc* table)
+{
+  acquire(&ptable.lock);
+  int i = 0;
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC] && i < max; p++){
+    if(p->state == UNUSED || p->state == EMBRYO)
+      continue;
+    table[i].pid = p->pid;
+    table[i].uid = p->uid;
+    table[i].gid = p->gid;
+    if(table[i].pid == 1) // proc is init
+      table[i].ppid = table[i].pid;
+    else
+      table[i].ppid = p->parent->pid;
+    table[i].elapsed_ticks = ticks - p->start_ticks;
+    table[i].CPU_total_ticks = p->cpu_ticks_total;
+    strncpy(table[i].state, states[p->state], STRMAX);
+    table[i].size = p->sz;
+    strncpy(table[i].name, p->name, STRMAX);
+    ++i; 
+  }
+  release(&ptable.lock);
+  return i;
+}
+#endif
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
@@ -511,8 +563,10 @@ procdump(void)
   char *state;
   uint pc[10];
 
-#ifdef CS333_P1
-    cprintf("PID\tState\tName\tElapsed  PCs\n");
+#ifdef CS333_P2
+  cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n");
+#elif defined CS333_P1
+    cprintf("PID\tState\tName\tElapsed\tPCs\n");
 #endif
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -522,10 +576,27 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
+#ifdef CS333_P2
+    int ppid;
+    int elapsed = ticks - p->start_ticks;
+    if(p->pid == 1)
+      ppid = p->pid;
+    else
+      ppid = p->parent->pid;
+    cprintf("%d\t%s\t%d\t%d\t%d\t%d.%d%d%d\t%d.%d%d%d\t%s\t%d\t",
+        p->pid, p->name, p->uid, p->gid, ppid, elapsed/1000,
+        (elapsed%1000 - elapsed%100)/100, (elapsed%100 - elapsed%10)/10,
+        elapsed%10, p->cpu_ticks_total/1000,
+        (p->cpu_ticks_total%1000 - p->cpu_ticks_total%100)/100, 
+        (p->cpu_ticks_total%100 - p->cpu_ticks_total%10)/10,
+        p->cpu_ticks_total%10, state, p->sz);
+#else
     cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
 #ifdef CS333_P1
     int elapsed_ticks = ticks - p->start_ticks;
-    cprintf("%d.%d\t", elapsed_ticks/1000, elapsed_ticks%1000);
+    cprintf("%d.%d%d%d\t", elapsed_ticks/1000, (elapsed_ticks%1000 - elapsed_ticks%100)/100, 
+        (elapsed_ticks%100 - elapsed_ticks%10)/10, elapsed_ticks%10);
+#endif
 #endif
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);

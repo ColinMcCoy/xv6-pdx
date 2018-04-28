@@ -6,6 +6,9 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#ifdef CS333_P2
+#include "uproc.h"
+#endif
 
 int
 sys_fork(void)
@@ -105,3 +108,65 @@ sys_date(void){
 }
 #endif
 
+#ifdef CS333_P2
+// return the uid of the current process
+uint
+sys_getuid(void)
+{
+  return proc->uid;
+}
+
+// return the gid of the current process
+int
+sys_getgid(void)
+{
+  return proc->gid;
+}
+
+// return the parent pid of the current process
+int
+sys_getppid(void)
+{
+  if(proc->pid == 1)
+    return proc->pid;
+  return proc->parent->pid;
+}
+
+// set uid of the current process. return -1 if unsuccesful
+int 
+sys_setuid(void)
+{
+  int u;
+  argint(0, &u);
+  if(u < 0 || u > 32767)
+    return -1;
+  proc->uid = (uint) u;
+  return 0;
+}
+
+// set gid of the current process. return -1 if unsuccesful
+int
+sys_setgid(void)
+{
+  int g;
+  argint(0, &g);
+  if(g < 0 || g > 32767)
+    return -1;
+  proc->gid = (uint) g;
+  return 0;
+}
+
+// fills table with uproc representations of running processes
+int
+sys_getprocs(void)
+{
+  int max;
+  argint(0, &max);
+  if(max < 0)
+    return -1;
+  struct uproc* table;
+  if(argptr(1, (void*)&table, sizeof(struct uproc)) < 0)
+    return -1;
+  return getuprocs(max, table);
+}
+#endif
