@@ -10,9 +10,29 @@
 #include "uproc.h"
 #endif
 
+#ifdef CS333_P3P4
+struct StateLists {
+  struct proc* ready;
+  struct proc* readyTail;
+  struct proc* free;
+  struct proc* freeTail;
+  struct proc* sleep;
+  struct proc* sleepTail;
+  struct proc* zombie;
+  struct proc* zombieTail;
+  struct proc* running;
+  struct proc* runningTail;
+  struct proc* embryo;
+  struct proc* embryoTail;
+};
+#endif
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+#ifdef CS333_P3P4
+  struct StateLists pLists;
+#endif
 } ptable;
 
 static struct proc *initproc;
@@ -98,6 +118,12 @@ found:
 void
 userinit(void)
 {
+#ifdef CS333_P3P4
+  initProcessLists();
+  acquire(&ptable.lock);
+  initFreeList();
+  release(&ptable.lock);
+#endif
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
@@ -123,6 +149,12 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+#ifdef CS333_P3P4
+  p->next = 0;
+  acquire(&ptable.lock);
+  stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p);
+  release(&ptable.lock);
+#endif
 }
 
 // Grow current process's memory by n bytes.
@@ -197,7 +229,7 @@ fork(void)
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
-#ifndef CS333_P3P4
+#ifndef CS333_P3P4_NO
 void
 exit(void)
 {
@@ -249,7 +281,7 @@ exit(void)
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-#ifndef CS333_P3P4
+#ifndef CS333_P3P4_NO
 int
 wait(void)
 {
@@ -307,7 +339,7 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-#ifndef CS333_P3P4
+#ifndef CS333_P3P4_NO
 // original xv6 scheduler. Use if CS333_P3P4 NOT defined.
 void
 scheduler(void)
@@ -452,7 +484,7 @@ sleep(void *chan, struct spinlock *lk)
 }
 
 //PAGEBREAK!
-#ifndef CS333_P3P4
+#ifndef CS333_P3P4_NO
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
 static void
@@ -484,7 +516,7 @@ wakeup(void *chan)
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
-#ifndef CS333_P3P4
+#ifndef CS333_P3P4_NO
 int
 kill(int pid)
 {
