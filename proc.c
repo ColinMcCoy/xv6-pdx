@@ -49,6 +49,10 @@ static void initProcessLists(void);
 static void initFreeList(void);
 static int stateListAdd(struct proc** head, struct proc** tail, struct proc* p);
 static int stateListRemove(struct proc** head, struct proc** tail, struct proc* p);
+static void
+transitionProc(struct proc** oldhead, struct proc** oldtail,
+    struct proc** newhead, struct proc** newtail, 
+    enum procstate oldstate, enum procstate newstate, struct proc* p);
 #endif
 
 void
@@ -69,20 +73,44 @@ allocproc(void)
   char *sp;
 
   acquire(&ptable.lock);
+#ifndef CS333_P3P4
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
+
   release(&ptable.lock);
   return 0;
 
 found:
   p->state = EMBRYO;
+
+
+#else
+  if(ptable.pLists.free) {
+    p = ptable.pLists.free;
+    transitionProc(&ptable.pLists.free, &ptable.pLists.freeTail,
+        &ptable.pLists.embryo, &ptable.pLists.embryoTail,
+        UNUSED, EMBRYO, p);
+  }
+  else {
+    release(&ptable.lock);
+    return 0;
+  }
+#endif
+  
   p->pid = nextpid++;
   release(&ptable.lock);
-
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
+#ifndef CS333_P3P4
     p->state = UNUSED;
+#else
+    acquire(&ptable.lock);
+    transitionProc(&ptable.pLists.embryo, &ptable.pLists.embryoTail,
+        &ptable.pLists.free, &ptable.pLists.freeTail,
+        EMBRYO, UNUSED, p);
+    release(&ptable.lock);
+#endif
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -109,7 +137,6 @@ found:
   p->cpu_ticks_total = 0;
   p->cpu_ticks_in = 0;
 #endif
-
   return p;
 }
 
@@ -119,8 +146,8 @@ void
 userinit(void)
 {
 #ifdef CS333_P3P4
-  initProcessLists();
   acquire(&ptable.lock);
+  initProcessLists();
   initFreeList();
   release(&ptable.lock);
 #endif
@@ -150,7 +177,6 @@ userinit(void)
 
   p->state = RUNNABLE;
 #ifdef CS333_P3P4
-  p->next = 0;
   acquire(&ptable.lock);
   stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p);
   release(&ptable.lock);
@@ -326,8 +352,42 @@ wait(void)
 int
 wait(void)
 {
+  struct proc *p;
+  int havekids, pid;
 
-  return 0;  // placeholder
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != proc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  } 
 }
 #endif
 
@@ -728,5 +788,23 @@ initFreeList(void) {
     p->state = UNUSED;
     stateListAdd(&ptable.pLists.free, &ptable.pLists.freeTail, p);
   }
+}
+static void
+assertState(struct proc* p, enum procstate state) {
+  if (p->state != state)
+    panic("Expected state s but process was in state s\n");
+}
+
+static void
+transitionProc(struct proc** oldhead, struct proc** oldtail,
+    struct proc** newhead, struct proc** newtail, 
+    enum procstate oldstate, enum procstate newstate, struct proc* p) {
+  int rc = stateListRemove(oldhead, oldtail, p);
+  if (rc < 0) 
+    panic("Removal from previous list failed"); 
+  assertState(p, oldstate);
+  p->state = newstate;
+  stateListAdd(newhead, newtail, p);
+  assertState(p, newstate);
 }
 #endif
