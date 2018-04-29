@@ -220,7 +220,15 @@ fork(void)
   if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
+#ifndef CS333_P3P4
     np->state = UNUSED;
+#else
+    acquire(&ptable.lock);
+    transitionProc(&ptable.pLists.embryo, &ptable.pLists.embryoTail,
+        &ptable.pLists.free, &ptable.pLists.freeTail,
+        EMBRYO, UNUSED, np);
+    release(&ptable.lock);
+#endif
     return -1;
   }
   np->sz = proc->sz;
@@ -246,7 +254,13 @@ fork(void)
 
   // lock to force the compiler to emit the np->state write last.
   acquire(&ptable.lock);
+#ifndef CS333_P3P4
   np->state = RUNNABLE;
+#else
+  transitionProc(&ptable.pLists.embryo, &ptable.pLists.embryoTail,
+      &ptable.pLists.ready, &ptable.pLists.readyTail,
+      EMBRYO, RUNNABLE, np);
+#endif
   release(&ptable.lock);
 
   return pid;
