@@ -269,7 +269,7 @@ fork(void)
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
-#ifndef CS333_P3P4_NO
+#ifndef CS333_P3P4
 void
 exit(void)
 {
@@ -315,6 +315,43 @@ exit(void)
 void
 exit(void)
 {
+  struct proc *p;
+  int fd;
+
+  if(proc == initproc)
+    panic("init exiting");
+
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
+    if(proc->ofile[fd]){
+      fileclose(proc->ofile[fd]);
+      proc->ofile[fd] = 0;
+    }
+  }
+
+  begin_op();
+  iput(proc->cwd);
+  end_op();
+  proc->cwd = 0;
+
+  acquire(&ptable.lock);
+
+  // Parent might be sleeping in wait().
+  wakeup1(proc->parent);
+
+  // Pass abandoned children to init.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == proc){
+      p->parent = initproc;
+      if(p->state == ZOMBIE)
+        wakeup1(initproc);
+    }
+  }
+
+  // Jump into the scheduler, never to return.
+  proc->state = ZOMBIE;
+  sched();
+  panic("zombie exit");
 
 }
 #endif
@@ -558,7 +595,7 @@ sleep(void *chan, struct spinlock *lk)
 }
 
 //PAGEBREAK!
-#ifndef CS333_P3P4_NO
+#ifndef CS333_P3P4
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
 static void
@@ -574,7 +611,15 @@ wakeup1(void *chan)
 static void
 wakeup1(void *chan)
 {
-
+  struct proc *ip = ptable.pLists.sleep;
+  while(ip) {
+    struct proc *temp = ip;
+    ip = ip->next;
+    if (temp->chan == chan) 
+      transitionProc(&ptable.pLists.sleep, &ptable.pLists.sleepTail,
+          &ptable.pLists.ready, &ptable.pLists.readyTail,
+          SLEEPING, RUNNABLE, temp);
+    }
 }
 #endif
 
