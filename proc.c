@@ -470,7 +470,7 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-#ifndef CS333_P3P4_NO
+#ifndef CS333_P3P4
 // original xv6 scheduler. Use if CS333_P3P4 NOT defined.
 void
 scheduler(void)
@@ -520,7 +520,45 @@ scheduler(void)
 void
 scheduler(void)
 {
+  struct proc *p;
+  int idle;  // for checking if processor is idle
 
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    idle = 1;  // assume idle unless we schedule a process
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+    p = ptable.pLists.ready;
+    if(p) {
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      idle = 0;  // not idle this timeslice
+      proc = p;
+      switchuvm(p);
+      transitionProc(&ptable.pLists.ready, &ptable.pLists.readyTail,
+          &ptable.pLists.running, &ptable.pLists.runningTail,
+          RUNNABLE, RUNNING, p);
+#ifdef CS333_P2
+      p->cpu_ticks_in = ticks;
+#endif
+      swtch(&cpu->scheduler, proc->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      proc = 0;
+    }
+     
+    release(&ptable.lock);
+    // if idle, wait for next interrupt
+    if (idle) {
+      sti();
+      hlt();
+    }
+  }
 }
 #endif
 
