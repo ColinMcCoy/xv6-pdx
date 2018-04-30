@@ -590,7 +590,13 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
+#ifndef CS333_P3P4
   proc->state = RUNNABLE;
+#else
+  transitionProc(&ptable.pLists.running, &ptable.pLists.runningTail,
+      &ptable.pLists.ready, &ptable.pLists.readyTail,
+      RUNNING, RUNNABLE, proc);
+#endif
   sched();
   release(&ptable.lock);
 }
