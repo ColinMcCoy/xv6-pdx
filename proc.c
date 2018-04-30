@@ -310,12 +310,12 @@ exit(void)
   proc->state = ZOMBIE;
   sched();
   panic("zombie exit");
+
 }
 #else
 void
 exit(void)
-{
-  struct proc *p;
+{ 
   int fd;
 
   if(proc == initproc)
@@ -339,21 +339,41 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
-  // Pass abandoned children to init.
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
-      p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
+  // Pass abandoned children to init
+  struct proc *ip = ptable.pLists.ready;
+  while(ip) {
+    if(ip->parent == proc)
+      ip->parent = initproc;
+    ip = ip->next;
+  }
+  ip = ptable.pLists.running;
+  while(ip) {
+    if(ip->parent == proc)
+      ip->parent = initproc;
+    ip = ip->next;
+  }
+  ip = ptable.pLists.sleep;
+  while(ip) {
+    if(ip->parent == proc)
+      ip->parent = initproc;
+    ip = ip->next;
+  }
+  ip = ptable.pLists.zombie;
+  while(ip) {
+    if(ip->parent == proc) {
+      ip->parent = initproc;
+      wakeup1(initproc);
     }
   }
 
   // Jump into the scheduler, never to return.
-  proc->state = ZOMBIE;
+  transitionProc(&ptable.pLists.running, &ptable.pLists.runningTail,
+      &ptable.pLists.zombie, &ptable.pLists.zombieTail,
+      RUNNING, ZOMBIE, proc);
   sched();
   panic("zombie exit");
-
 }
+
 #endif
 
 // Wait for a child process to exit and return its pid.
@@ -581,7 +601,13 @@ sleep(void *chan, struct spinlock *lk)
 
   // Go to sleep.
   proc->chan = chan;
+#ifndef CS333_P3P4
   proc->state = SLEEPING;
+#else
+  transitionProc(&ptable.pLists.running, &ptable.pLists.runningTail,
+      &ptable.pLists.sleep, &ptable.pLists.sleepTail,
+      RUNNING, SLEEPING, proc);
+#endif
   sched();
 
   // Tidy up.
