@@ -364,6 +364,7 @@ exit(void)
       ip->parent = initproc;
       wakeup1(initproc);
     }
+    ip = ip->next;
   }
 
   // Jump into the scheduler, never to return.
@@ -378,7 +379,7 @@ exit(void)
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-#ifndef CS333_P3P4_NO
+#ifndef CS333_P3P4
 int
 wait(void)
 {
@@ -389,17 +390,18 @@ wait(void)
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
-        continue;
-      havekids = 1;
-      if(p->state == ZOMBIE){
+    p = ptable.pLists.zombie;
+    while(p) {
+      if(p->parent == proc) {
+        havekids = 1;
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
-        p->state = UNUSED;
+        transitionProc(&ptable.pLists.zombie, &ptable.pLists.zombieTail,
+            &ptable.pLists.free, &ptable.pLists.freeTail,
+            ZOMBIE, UNUSED);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -407,7 +409,9 @@ wait(void)
         release(&ptable.lock);
         return pid;
       }
+      p = p->next;
     }
+    
 
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
