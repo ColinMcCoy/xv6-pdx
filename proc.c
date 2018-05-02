@@ -1003,4 +1003,66 @@ transitionProc(struct proc** oldhead, struct proc** oldtail,
   stateListAdd(newhead, newtail, p);
   assertState(p, newstate);
 }
+
+void 
+listReady(void) {
+  cprintf("Ready List Processes:\n"); 
+  acquire(&ptable.lock);
+  struct proc* p = ptable.pLists.ready;
+  while(p) {
+    cprintf("%d ", p->pid);
+    if(p != ptable.pLists.readyTail)
+      cprintf("-> ");
+    else
+      cprintf("\n");
+    p = p->next;
+  }
+  release(&ptable.lock);
+}
+
+void
+printNumFree(void) {
+  int numFree = 0;
+  acquire(&ptable.lock);
+  struct proc* p = ptable.pLists.free; 
+  while(p) {
+    ++numFree;
+    p = p->next;
+  }
+  release(&ptable.lock);
+  cprintf("Free List Size: %d processes\n", numFree);
+}
+
+void
+listSleep(void) {
+  cprintf("Sleep List Processes\n");
+  acquire(&ptable.lock);
+  struct proc* p = ptable.pLists.sleep;
+  while(p) {
+    cprintf("%d ", p->pid);
+    if(p != ptable.pLists.sleepTail)
+      cprintf(" -> ");
+    else
+      cprintf("\n");
+    p = p->next;
+  }
+  release(&ptable.lock);
+}
+
+void
+listZombies(void) {
+  cprintf("Zombie List Processes\n");
+  acquire(&ptable.lock);
+  struct proc* p = ptable.pLists.zombie;
+  while(p) {
+    cprintf("(%d, %d)", p->pid, p->parent->pid);
+    if(p != ptable.pLists.zombieTail)
+      cprintf(" -> ");
+    else
+      cprintf("\n");
+    p = p->next;
+  }
+  release(&ptable.lock);
+}
+
 #endif

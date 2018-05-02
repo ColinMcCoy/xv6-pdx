@@ -190,7 +190,10 @@ void
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
-
+#ifdef CS333_P3P4
+  int dolistReady, doprintNumFree, dolistSleep, dolistZombies;
+  dolistReady = doprintNumFree = dolistSleep = dolistZombies = 0;
+#endif
   acquire(&cons.lock);
   while((c = getc()) >= 0){
     switch(c){
@@ -210,6 +213,20 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+#ifdef CS333_P3P4
+    case C('R'):
+      dolistReady = 1;
+      break;
+    case C('F'):
+      doprintNumFree = 1;
+      break;
+    case C('S'):
+      dolistSleep = 1;
+      break;
+    case C('Z'):
+      dolistZombies = 1;
+      break;
+#endif
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
@@ -227,6 +244,16 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+#ifdef CS333_P3P4
+  if(dolistReady)
+    listReady();
+  if(doprintNumFree)
+    printNumFree();
+  if(dolistSleep)
+    listSleep();
+  if(dolistZombies)
+    listZombies();
+#endif
 }
 
 int
