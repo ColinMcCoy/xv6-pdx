@@ -175,10 +175,18 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+#ifndef CS333_P3P4
   p->state = RUNNABLE;
-#ifdef CS333_P3P4
+#else
+//#ifdef CS333_P3P4
   acquire(&ptable.lock);
-  stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p);
+  //stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p);
+  transitionProc(&ptable.pLists.embryo, &ptable.pLists.embryoTail,
+      &ptable.pLists.ready, &ptable.pLists.readyTail,
+      EMBRYO, RUNNABLE, p);
+  /*ptable.pLists.ready = p;
+  ptable.pLists.readyTail = p;
+  p->next = 0;*/
   release(&ptable.lock);
 #endif
 }
@@ -390,50 +398,6 @@ wait(void)
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    p = ptable.pLists.zombie;
-    while(p) {
-      if(p->parent == proc) {
-        havekids = 1;
-        // Found one.
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        transitionProc(&ptable.pLists.zombie, &ptable.pLists.zombieTail,
-            &ptable.pLists.free, &ptable.pLists.freeTail,
-            ZOMBIE, UNUSED);
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        release(&ptable.lock);
-        return pid;
-      }
-      p = p->next;
-    }
-    
-
-    // No point waiting if we don't have any children.
-    if(!havekids || proc->killed){
-      release(&ptable.lock);
-      return -1;
-    }
-
-    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(proc, &ptable.lock);  //DOC: wait-sleep
-  }
-}
-#else
-int
-wait(void)
-{
-  struct proc *p;
-  int havekids, pid;
-
-  acquire(&ptable.lock);
-  for(;;){
-    // Scan through table looking for zombie children.
-    havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
         continue;
@@ -464,6 +428,74 @@ wait(void)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   } 
 }
+#else
+int
+wait(void)
+{
+  struct proc *p;
+  int havekids, pid;
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    p = ptable.pLists.zombie;
+    while(p) {
+      if(p->parent == proc) {
+        havekids = 1;
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        transitionProc(&ptable.pLists.zombie, &ptable.pLists.zombieTail,
+            &ptable.pLists.free, &ptable.pLists.freeTail,
+            ZOMBIE, UNUSED, p);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+      p = p->next;
+    }
+    p = ptable.pLists.running;
+    while(p) {
+      if(p->parent == proc) 
+        havekids = 1;
+      p = p->next;
+    }
+    p = ptable.pLists.sleep;
+    while(p) {
+      if(p->parent == proc) 
+        havekids = 1;
+      p = p->next;
+    }
+    p = ptable.pLists.ready;
+    while(p) {
+      if(p->parent == proc) 
+        havekids = 1;
+      p = p->next;
+    }
+    p = ptable.pLists.embryo;
+    while(p) {
+      if(p->parent == proc) 
+        havekids = 1;
+      p = p->next;
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
 #endif
 
 //PAGEBREAK: 42
@@ -709,7 +741,7 @@ wakeup(void *chan)
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
-#ifndef CS333_P3P4_NO
+#ifndef CS333_P3P4
 int
 kill(int pid)
 {
@@ -733,8 +765,39 @@ kill(int pid)
 int
 kill(int pid)
 {
+  struct proc *p;
 
-  return 0;  // placeholder
+  acquire(&ptable.lock); 
+  p = ptable.pLists.running;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  p = ptable.pLists.ready;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  p = ptable.pLists.sleep;
+  while(p) {
+    if(p->pid == pid){
+      p->killed = 1;
+      // Wake process from sleep if necessary.
+      transitionProc(&ptable.pLists.sleep, &ptable.pLists.sleepTail,
+          &ptable.pLists.ready, &ptable.pLists.readyTail,
+          SLEEPING, RUNNABLE, p);
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
 }
 #endif
 
