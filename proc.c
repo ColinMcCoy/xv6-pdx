@@ -775,6 +775,7 @@ kill(int pid)
       release(&ptable.lock);
       return 0;
     }
+    p = p->next;
   }
   p = ptable.pLists.ready;
   while(p) {
@@ -783,6 +784,7 @@ kill(int pid)
       release(&ptable.lock);
       return 0;
     }
+    p = p->next;
   }
   p = ptable.pLists.sleep;
   while(p) {
@@ -795,6 +797,7 @@ kill(int pid)
       release(&ptable.lock);
       return 0;
     }
+    p = p->next;
   }
   release(&ptable.lock);
   return -1;
