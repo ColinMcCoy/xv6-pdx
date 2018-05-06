@@ -178,15 +178,10 @@ userinit(void)
 #ifndef CS333_P3P4
   p->state = RUNNABLE;
 #else
-//#ifdef CS333_P3P4
   acquire(&ptable.lock);
-  //stateListAdd(&ptable.pLists.ready, &ptable.pLists.readyTail, p);
   transitionProc(&ptable.pLists.embryo, &ptable.pLists.embryoTail,
       &ptable.pLists.ready, &ptable.pLists.readyTail,
       EMBRYO, RUNNABLE, p);
-  /*ptable.pLists.ready = p;
-  ptable.pLists.readyTail = p;
-  p->next = 0;*/
   release(&ptable.lock);
 #endif
 }
@@ -799,6 +794,24 @@ kill(int pid)
     }
     p = p->next;
   }
+  p = ptable.pLists.embryo;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+    p = p->next;
+  }
+  p = ptable.pLists.zombie;
+  while(p) {
+    if(p->pid == pid) {
+      p->killed = 1;
+      release(&ptable.lock);
+      return 0;
+    }
+    p = p->next;
+  }
   release(&ptable.lock);
   return -1;
 }
@@ -990,8 +1003,8 @@ initFreeList(void) {
 }
 static void
 assertState(struct proc* p, enum procstate state) {
-  if (p->state != state)
-    panic("Expected state s but process was in state s\n");
+  if (p->state != state) 
+    panic("Process not in expected state\n");
 }
 
 static void
