@@ -78,6 +78,9 @@ struct proc {
   uint cpu_ticks_total;         // Total elapsed ticks in CPU
   uint cpu_ticks_in;            // Global tick value when scheduled
 #endif
+#ifdef CS333_P3P4
+ struct proc* next;             // Pointer to the next process in list
+#endif 
 };
 
 #ifdef CS333_P2

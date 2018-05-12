@@ -161,7 +161,8 @@ int
 sys_getprocs(void)
 {
   int max;
-  argint(0, &max);
+  if(argint(0, &max) < 0)
+    return -1;
   if(max < 0)
     return -1;
   struct uproc* table;
