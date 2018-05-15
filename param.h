@@ -16,3 +16,7 @@
 #define UID_DEFAULT 0     // default uid value for processes
 #define GID_DEFAULT 0     // default gid value for processes
 #endif
+#ifdef CS333_P3P4
+#define MAXPRIO 3         // number of priority is equal to MAXPRIO + 1
+#define BUDGET  3000      // CPU time budget before demotion
+#endif
