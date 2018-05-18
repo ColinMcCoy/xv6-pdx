@@ -32,6 +32,7 @@ struct {
   struct proc proc[NPROC];
 #ifdef CS333_P3P4
   struct StateLists pLists;
+  uint PromoteAtTime;
 #endif
 } ptable;
 
@@ -53,6 +54,7 @@ static void
 transitionProc(struct proc** oldhead, struct proc** oldtail,
     struct proc** newhead, struct proc** newtail, 
     enum procstate oldstate, enum procstate newstate, struct proc* p);
+static void promoteAll(void);
 #endif
 
 void
@@ -153,6 +155,7 @@ userinit(void)
   acquire(&ptable.lock);
   initProcessLists();
   initFreeList();
+  ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
   release(&ptable.lock);
 #endif
   struct proc *p;
@@ -568,6 +571,10 @@ scheduler(void)
     idle = 1;  // assume idle unless we schedule a process
     // Loop through ready queues looking for process to run
     acquire(&ptable.lock); 
+    if (ticks >= ptable.PromoteAtTime) {
+      promoteAll();
+      ptable.PromoteAtTime = ticks + TICKS_TO_PROMOTE;
+    }
     for(int i = 0; i <= MAXPRIO; ++i) {
       p = ptable.pLists.ready[i];
       if(p) {
@@ -1018,9 +1025,13 @@ initFreeList(void) {
 static void
 assertState(struct proc* p, enum procstate state) {
   if (p->state != state) 
-    panic("Process not HEY in expected state\n");
+    panic("Process not in expected state\n");
 }
-
+static void
+assertPriority(struct proc* p, int priority) {
+  if (p->priority != priority)
+    panic("Process not in expected priority\n");
+}
 static void
 transitionProc(struct proc** oldhead, struct proc** oldtail,
     struct proc** newhead, struct proc** newtail, 
@@ -1029,11 +1040,41 @@ transitionProc(struct proc** oldhead, struct proc** oldtail,
   if (rc < 0) 
     panic("Removal from previous list failed"); 
   assertState(p, oldstate);
+  if (oldstate == RUNNABLE)
+    assertPriority(p, p->priority);
   p->state = newstate;
   stateListAdd(newhead, newtail, p);
   assertState(p, newstate);
 }
-
+static void
+promoteAll(void) {
+  struct proc* p = ptable.pLists.running;
+  while(p) {
+    if (p->priority > 0) {
+      p->priority -= 1;
+      p->budget = BUDGET;
+    }
+    p = p->next;
+  }
+  p = ptable.pLists.sleep;
+  while(p) {
+    if (p->priority > 0) {
+      p->priority -= 1;
+      p->budget = BUDGET;
+    }
+    p = p->next;
+  }
+  for(int i = 1; i <= MAXPRIO; ++i) {
+    p = ptable.pLists.ready[i];
+    while(p) {
+      transitionProc(&ptable.pLists.ready[i], &ptable.pLists.readyTail[i],
+          &ptable.pLists.ready[i - 1], &ptable.pLists.readyTail[i - 1],
+          RUNNABLE, RUNNABLE, p);
+      p->priority -= 1;
+      p->budget = BUDGET;
+    }
+  }
+}
 void 
 listReady(void) {
   cprintf("Ready List Processes:\n"); 
@@ -1162,4 +1203,5 @@ setpriority(int pid, int priority)
   release(&ptable.lock);
   return -1;
 }
+
 #endif
