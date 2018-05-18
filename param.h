@@ -18,6 +18,6 @@
 #endif
 #ifdef CS333_P3P4
 #define MAXPRIO           3         // number of priority queues is equal to MAXPRIO + 1
-#define BUDGET            3000      // CPU time budget before demotion
-#define TICKS_TO_PROMOTE  5000      // scheduler ticks before promotion
+#define BUDGET            1000      // CPU time budget before demotion
+#define TICKS_TO_PROMOTE  15000      // scheduler ticks before promotion
 #endif

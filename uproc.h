@@ -11,5 +11,6 @@ struct uproc {
   char state [STRMAX];
   uint size;
   char name[STRMAX];
+  uint priority;
 };
 #endif

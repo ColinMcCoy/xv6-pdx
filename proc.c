@@ -641,6 +641,11 @@ yield(void)
 #ifndef CS333_P3P4
   proc->state = RUNNABLE;
 #else
+  proc->budget -= (ticks - proc->cpu_ticks_in);
+  if (proc->budget <= 0 && proc->priority < MAXPRIO) {
+    ++proc->priority;
+    proc->budget = BUDGET;
+  }
   transitionProc(&ptable.pLists.running, &ptable.pLists.runningTail,
       &ptable.pLists.ready[proc->priority], &ptable.pLists.readyTail[proc->priority],
       RUNNING, RUNNABLE, proc);
@@ -696,6 +701,11 @@ sleep(void *chan, struct spinlock *lk)
 #ifndef CS333_P3P4
   proc->state = SLEEPING;
 #else
+  proc->budget -= (ticks - proc->cpu_ticks_in);
+  if (proc->budget <= 0 && proc->priority < MAXPRIO) {
+    ++proc->priority;
+    proc->budget = BUDGET;
+  }
   transitionProc(&ptable.pLists.running, &ptable.pLists.runningTail,
       &ptable.pLists.sleep, &ptable.pLists.sleepTail,
       RUNNING, SLEEPING, proc);
@@ -867,6 +877,7 @@ getuprocs(uint max, struct uproc* table)
     strncpy(table[i].state, states[p->state], STRMAX);
     table[i].size = p->sz;
     strncpy(table[i].name, p->name, STRMAX);
+    table[i].priority = p->priority;
     ++i; 
   }
   release(&ptable.lock);
@@ -887,7 +898,11 @@ procdump(void)
   uint pc[10];
 
 #ifdef CS333_P2
-  cprintf("PID\tName\tUID\tGID\tPPID\tElapsed\tCPU\tState\tSize\tPCs\n");
+  cprintf("PID\tName\tUID\tGID\tPPID\t");
+#ifdef CS333_P3P4
+  cprintf("Prio\t");
+#endif
+  cprintf("Elapsed\tCPU\tState\tSize\tPCs\n");
 #elif defined CS333_P1
     cprintf("PID\tState\tName\tElapsed\tPCs\n");
 #endif
@@ -906,13 +921,17 @@ procdump(void)
       ppid = p->pid;
     else
       ppid = p->parent->pid;
-    cprintf("%d\t%s\t%d\t%d\t%d\t%d.%d%d%d\t%d.%d%d%d\t%s\t%d\t",
-        p->pid, p->name, p->uid, p->gid, ppid, elapsed/1000,
+    cprintf("%d\t%s\t%d\t%d\t%d\t", p->pid, p->name, p->uid, p->gid, ppid);
+#ifdef CS333_P3P4
+    cprintf("%d\t", p->priority);
+#endif
+    cprintf("%d.%d%d%d\t%d.%d%d%d\t%s\t%d\t",elapsed/1000,
         (elapsed%1000 - elapsed%100)/100, (elapsed%100 - elapsed%10)/10,
         elapsed%10, p->cpu_ticks_total/1000,
         (p->cpu_ticks_total%1000 - p->cpu_ticks_total%100)/100, 
         (p->cpu_ticks_total%100 - p->cpu_ticks_total%10)/10,
         p->cpu_ticks_total%10, state, p->sz);
+
 #else
     cprintf("%d\t%s\t%s\t", p->pid, state, p->name);
 #ifdef CS333_P1
@@ -1072,6 +1091,7 @@ promoteAll(void) {
           RUNNABLE, RUNNABLE, p);
       p->priority -= 1;
       p->budget = BUDGET;
+      p = p->next;
     }
   }
 }
