@@ -1102,14 +1102,16 @@ listReady(void) {
   struct proc* p;
   for(int i = 0; i <= MAXPRIO; ++i) {
     p = ptable.pLists.ready[i];
+    cprintf("%d: ", i);
     while(p) {
-      cprintf("%d ", p->pid);
+      cprintf("(%d, %d) ", p->pid, p->budget);
       if(p != ptable.pLists.readyTail[i])
         cprintf("-> ");
       else
         cprintf("\n");
        p = p->next;
     }
+    cprintf("\n");
   }
   release(&ptable.lock);
 }

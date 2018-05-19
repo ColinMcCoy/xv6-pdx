@@ -94,3 +94,4 @@ p2testsuite.c
 uproc.h
 infiniteproc.c
 p3testsuite.c
+p4test.c

@@ -4,8 +4,9 @@
 int
 main(int argc, char * argv[])
 {
-  for(;;) {
-  //loop forever
+  while(1) {
+  int i = 0;
+  i = i + 1 - 1;
   }
   exit();
 }
