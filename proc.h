@@ -80,6 +80,8 @@ struct proc {
 #endif
 #ifdef CS333_P3P4
  struct proc* next;             // Pointer to the next process in list
+ int priority;                  // Priority level for scheduling (0 to MAXPRIO)
+ int budget;                    // Runtime budget in ticks before demotion
 #endif 
 };
 

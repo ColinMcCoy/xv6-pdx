@@ -16,3 +16,8 @@
 #define UID_DEFAULT 0     // default uid value for processes
 #define GID_DEFAULT 0     // default gid value for processes
 #endif
+#ifdef CS333_P3P4
+#define MAXPRIO           6         // number of priority queues is equal to MAXPRIO + 1
+#define BUDGET            1000      // CPU time budget before demotion
+#define TICKS_TO_PROMOTE  5000      // scheduler ticks before promotion
+#endif

@@ -123,6 +123,7 @@ void            listReady(void);
 void            printNumFree(void);
 void            listSleep(void);
 void            listZombies(void);
+int             setpriority(int pid, int priority);
 #endif
 
 // swtch.S
