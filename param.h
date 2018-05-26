@@ -13,8 +13,15 @@
 // #define FSSIZE       1000  // size of file system in blocks
 #define FSSIZE       2000  // size of file system in blocks  // CS333 requires a larger FS.
 #ifdef CS333_P2
-#define UID_DEFAULT 0     // default uid value for processes
-#define GID_DEFAULT 0     // default gid value for processes
+// default uid values for both the first process and files
+// created by mkfs when the file system is created
+#define UID_DEFAULT 0    
+#define GID_DEFAULT 0     
+#ifdef CS333_P5
+// default mode setting for files created
+// by mkfs when the file system is created
+#define MODE_DEFAULT 0755 
+#endif
 #endif
 #ifdef CS333_P3P4
 #define MAXPRIO           6         // number of priority queues is equal to MAXPRIO + 1
