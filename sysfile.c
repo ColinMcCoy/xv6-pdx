@@ -440,3 +440,50 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+#ifdef CS333_P5
+int
+sys_chmod(void)
+{
+  char **pathname = 0;
+  int mode;
+  if(argstr(0, pathname) < 0)
+    return -1;
+  if(argint(1, &mode) < 0)
+    return -1;
+  struct inode* ip = namei(*pathname);
+  if(!pathname)
+    return -1;
+  ip->mode.asInt = mode;
+  return 0;
+}
+int
+sys_chown(void)
+{
+  char **pathname = 0;
+  int owner;
+  if(argstr(0, pathname) < 0)
+    return -1;
+  if(argint(1, &owner) < 0)
+    return -1; 
+  struct inode* ip = namei(*pathname);
+   if(!pathname)
+    return -1;
+  ip->uid = owner;
+  return 0;
+}
+int
+sys_chgrp(void)
+{
+  char **pathname = 0;
+  int group;
+  if(argstr(0, pathname) < 0)
+    return -1;
+  if(argint(1, &group) < 0)
+    return -1; 
+  struct inode* ip = namei(*pathname);
+   if(!pathname)
+    return -1;
+  ip->gid = group;
+  return 0;
+}
+#endif

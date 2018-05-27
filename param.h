@@ -20,7 +20,7 @@
 #ifdef CS333_P5
 // default mode setting for files created
 // by mkfs when the file system is created
-#define MODE_DEFAULT 755 
+#define MODE_DEFAULT 0755 
 #endif
 #endif
 #ifdef CS333_P3P4
