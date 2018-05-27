@@ -185,4 +185,24 @@ sys_setpriority(void)
   return setpriority(pid, priority);
 }
 #endif
-  
+#ifdef CS333_P5
+int
+sys_chmod(void)
+{
+  char **pathname;
+  int mode;
+  if(fetchstr(0, pathname) < 0)
+    return -1;
+  if(argint(1, &mode) < 0)
+    return -1;
+
+}
+int
+sys_chown(void)
+{
+}
+int
+sys_chgrp(void)
+{
+}
+#endif

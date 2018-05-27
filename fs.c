@@ -217,7 +217,7 @@ iupdate(struct inode *ip)
 #ifdef CS333_P5
   dip->uid = ip->uid;
   dip->gid = ip->gid;
-  dip->mode.asInt = ip->mode.asInt;
+  dip->mode = ip->mode;
 #endif
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   log_write(bp);
@@ -440,7 +440,7 @@ stati(struct inode *ip, struct stat *st)
 #ifdef CS333_P5
   st->uid = ip->uid;
   st->gid = ip->gid;
-  st->mode.asInt = ip->mode.asInt;
+  st->mode.asInt = ip->mode.asInt; 
 #endif
 }
 
