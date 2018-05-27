@@ -451,10 +451,9 @@ sys_chmod(void)
   if(argint(1, &mode) < 0)
     return -1;
   struct inode* ip = namei(*pathname);
-  if(!pathname)
+  if(!ip)
     return -1;
-  ip->mode.asInt = mode;
-  return 0;
+  return chmod(ip, mode);
 }
 int
 sys_chown(void)
@@ -464,11 +463,12 @@ sys_chown(void)
   if(argstr(0, pathname) < 0)
     return -1;
   if(argint(1, &owner) < 0)
-    return -1; 
-  struct inode* ip = namei(*pathname);
-   if(!pathname)
     return -1;
-  ip->uid = owner;
+  if(owner < 0)
+    return -1; 
+  //struct inode* ip = namei(*pathname);
+  if(!pathname)
+    return -1;
   return 0;
 }
 int
@@ -480,10 +480,10 @@ sys_chgrp(void)
     return -1;
   if(argint(1, &group) < 0)
     return -1; 
-  struct inode* ip = namei(*pathname);
+  //struct inode* ip = namei(*pathname);
    if(!pathname)
     return -1;
-  ip->gid = group;
+  //ip->gid = group;
   return 0;
 }
 #endif

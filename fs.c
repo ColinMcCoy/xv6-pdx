@@ -217,7 +217,7 @@ iupdate(struct inode *ip)
 #ifdef CS333_P5
   dip->uid = ip->uid;
   dip->gid = ip->gid;
-  dip->mode = ip->mode;
+  dip->mode.asInt = ip->mode.asInt;
 #endif
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   log_write(bp);
@@ -669,15 +669,40 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
-#ifdef CS333_P5_NO
+#ifdef CS333_P5
 int
 chmod(struct inode* ip, int mode)
 {
+  if(mode > 01777)
+    return -1;
+  begin_op(); 
+  ilock(ip);
+  ip->mode.asInt= mode;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
 }
 int
 chown(struct inode* ip, int owner)
 {
+  begin_op(); 
+  ilock(ip);
+  ip->uid = owner;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
 }
 int
-chgrp(struct inode* 
+chgrp(struct inode* ip, int group)
+{
+  begin_op(); 
+  ilock(ip);
+  ip->gid = group;
+  iunlock(ip);
+  iupdate(ip);
+  end_op();
+  return 0;
+}
 #endif
