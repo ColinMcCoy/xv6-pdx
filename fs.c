@@ -296,6 +296,11 @@ ilock(struct inode *ip)
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+#ifdef CS333_P5
+    ip->uid = dip->uid;
+    ip->gid = dip->gid;
+    ip->mode = dip->mode;
+#endif
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
     ip->flags |= I_VALID;
@@ -664,3 +669,15 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+#ifdef CS333_P5_NO
+int
+chmod(struct inode* ip, int mode)
+{
+}
+int
+chown(struct inode* ip, int owner)
+{
+}
+int
+chgrp(struct inode* 
+#endif
