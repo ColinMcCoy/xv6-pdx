@@ -53,6 +53,8 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 #ifdef CS333_P5
 int             chmod(struct inode*, int);
+int             chown(struct inode*, int);
+int             chgrp(struct inode*, int);
 #endif
 
 // ide.c
