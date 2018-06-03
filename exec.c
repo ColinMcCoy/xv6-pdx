@@ -6,6 +6,9 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#ifdef CS333_P5
+#include "stat.h"
+#endif
 
 int
 exec(char *path, char **argv)
@@ -25,7 +28,21 @@ exec(char *path, char **argv)
   }
   ilock(ip);
   pgdir = 0;
-
+#ifdef CS333_P5 
+  // copy inode to stat
+  struct stat st;
+  stati(ip, &st);
+  // check execute permissions
+  int canExec = 0;
+  if(proc->uid == st.uid && st.mode.flags.u_x)
+    canExec = 1;
+  else if (proc->gid == st.gid && st.mode.flags.g_x)
+    canExec = 1;
+  else if (st.mode.flags.o_x)
+    canExec = 1;
+  if(!canExec)
+    goto bad;
+#endif
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
@@ -92,6 +109,10 @@ exec(char *path, char **argv)
   proc->sz = sz;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
+#ifdef CS333_P5
+  if(st.mode.flags.setuid)
+    proc->uid = st.uid;
+#endif
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;

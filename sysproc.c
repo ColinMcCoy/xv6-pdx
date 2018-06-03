@@ -185,4 +185,4 @@ sys_setpriority(void)
   return setpriority(pid, priority);
 }
 #endif
-  
+
