@@ -480,6 +480,8 @@ sys_chgrp(void)
     return -1;
   if(argint(1, &group) < 0)
     return -1; 
+  if(group < 0)
+    return -1;
   struct inode* ip = namei(pathname);
    if(!ip)
     return -1;
